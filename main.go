@@ -23,29 +23,38 @@ import (
 	"strings"
 
 	// External Imports
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
 	// Internal Imports
 	"github.com/MatthewHartstonge/b64secrets/models"
 )
 
-func createSecretsFile(fp string, wpf string) {
+const (
+	globPattern = "./*/*.yml"
+)
+
+func createSecretsFile(fp string, wpf string) error {
+	logger := log.WithFields(log.Fields{
+		"method": "createSecretsFile",
+	})
+
 	f, err := ioutil.ReadFile(fp)
+	if err != nil {
+		logger.WithFields(log.Fields{
+			"error": err,
+		}).Error("file read failure")
+		return err
+	}
 
 	// Split on documents
 	documents := strings.Split(string(f), "\n---")
-
-	base64SecretsFile, err := os.Create(wpf)
-	if err != nil {
-		panic(err)
-	}
-	defer base64SecretsFile.Close()
-
+	var parsedDocs [][]byte
 	for _, doc := range documents {
 		secretDefinition := models.Secret{}
 		yaml.Unmarshal([]byte(doc), &secretDefinition)
 
-		if secretDefinition.Kind != "Secret" {
+		if secretDefinition.Kind != "Secret" && secretDefinition.Type != "Opaque" {
 			continue
 		}
 
@@ -55,25 +64,74 @@ func createSecretsFile(fp string, wpf string) {
 
 		base64doc, err := yaml.Marshal(secretDefinition)
 		if err != nil {
-			panic(err)
+			logger.WithFields(log.Fields{
+				"error": err,
+			}).Error("yaml marshaling failure")
+			return err
 		}
-
-		base64SecretsFile.WriteString("---\n")
-		base64SecretsFile.Write(base64doc)
+		parsedDocs = append(parsedDocs, base64doc)
 	}
 
-	// Flush file to disk
-	base64SecretsFile.Sync()
+	if len(parsedDocs) > 0 {
+		base64SecretsFile, err := os.Create(wpf)
+		if err != nil {
+			logger.WithFields(log.Fields{
+				"error": err,
+			}).Error("file write failure")
+			return err
+		}
+		defer base64SecretsFile.Close()
+
+		for i := range parsedDocs {
+			_, err := base64SecretsFile.WriteString("---\n")
+			if err != nil {
+				logger.WithFields(log.Fields{
+					"error": err,
+				}).Error("file write failure")
+			}
+			_, err = base64SecretsFile.Write(parsedDocs[i])
+			if err != nil {
+				logger.WithFields(log.Fields{
+					"error": err,
+				}).Error("file write failure")
+			}
+		}
+
+		// Flush file to disk
+		err = base64SecretsFile.Sync()
+		logger.WithFields(log.Fields{
+			"error": err,
+		}).Error("file write failure")
+	}
+
+	logger.WithFields(log.Fields{
+		"originalPath":  fp,
+		"conformedPath": wpf,
+	}).Info("Created conformed secrets file")
+	return nil
 }
 
+
 func main() {
-	glob, err := filepath.Glob("./secrets-*.yml")
+	logger := log.WithFields(log.Fields{
+		"method": "main",
+	})
+
+	logger.Info("b64secrets is converting secrets..")
+	glob, err := filepath.Glob(globPattern)
 	if err != nil {
-		panic(err)
+		logger.WithFields(log.Fields{
+			"error": err,
+		}).Fatal("File globbing failed")
 	}
 
 	for _, readFilepath := range glob {
 		writeFilepath := fmt.Sprintf("%s.base64.yml", strings.TrimRight(readFilepath, ".yml"))
-		createSecretsFile(readFilepath, writeFilepath)
+		err := createSecretsFile(readFilepath, writeFilepath)
+		if err != nil {
+			logger.Error("error writing secrets file... Continuing...")
+		}
 	}
+
+	logger.Info("b64secrets file conversions completed!")
 }

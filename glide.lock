@@ -1,6 +1,17 @@
-hash: 0df810858b72528235109e8d9c736415b44454f546e1f5727af2054f3e9f7ebb
-updated: 2017-10-10T22:32:52.8030227+13:00
+hash: e6c8b87ebdbdc27cf6f4ce0cff48452baa9ec17b79b23cc912934b3747c5c090
+updated: 2017-10-12T21:15:32.1695918+13:00
 imports:
+- name: github.com/sirupsen/logrus
+  version: f006c2ac4710855cf0f916dd6b77acf6b048dc6e
+- name: golang.org/x/crypto
+  version: 81e90905daefcd6fd217b62423c0908922eadb30
+  subpackages:
+  - ssh/terminal
+- name: golang.org/x/sys
+  version: 2d6f6f883a06fc0d5f4b14a81e4c28705ea64c15
+  subpackages:
+  - unix
+  - windows
 - name: gopkg.in/yaml.v2
   version: eb3733d160e74a9c7e442f435eb3bea458e1d19f
 testImports: []
