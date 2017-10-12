@@ -54,7 +54,9 @@ func createSecretsFile(fp string, wpf string) error {
 		secretDefinition := models.Secret{}
 		yaml.Unmarshal([]byte(doc), &secretDefinition)
 
-		if secretDefinition.Kind != "Secret" && secretDefinition.Type != "Opaque" {
+		if secretDefinition.Kind != "Secret" {
+			continue
+		} else if secretDefinition.Type != "Opaque" {
 			continue
 		}
 
@@ -99,9 +101,11 @@ func createSecretsFile(fp string, wpf string) error {
 
 		// Flush file to disk
 		err = base64SecretsFile.Sync()
-		logger.WithFields(log.Fields{
-			"error": err,
-		}).Error("file write failure")
+		if err != nil {
+			logger.WithFields(log.Fields{
+				"error": err,
+			}).Error("file write failure")
+		}
 	}
 
 	logger.WithFields(log.Fields{
@@ -110,7 +114,6 @@ func createSecretsFile(fp string, wpf string) error {
 	}).Info("Created conformed secrets file")
 	return nil
 }
-
 
 func main() {
 	logger := log.WithFields(log.Fields{
