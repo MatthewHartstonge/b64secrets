@@ -1,4 +1,7 @@
 # b64secrets changelog
+## v0.2.3
+- Fixes present working directory globbing
+
 ## v0.2.2
 - Stops generating secret files if it contains `.base64.yml` in the filepath.
 - Now only logs the files that have actually been generated

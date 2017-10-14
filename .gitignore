@@ -2,3 +2,5 @@
 
 # Build files
 dist/
+main_go.exe
+b64secrets.exe

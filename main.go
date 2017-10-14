@@ -31,12 +31,13 @@ import (
 )
 
 const (
-	globPattern = "./*/*.yml"
+	globLocal     = "./*.yml"
+	globRecursive = "./**/*.yml"
 )
 
-func createSecretsFile(fp string, wpf string) error {
+func generateBase64SecretsFile(fp string, wpf string) error {
 	logger := log.WithFields(log.Fields{
-		"method": "createSecretsFile",
+		"method": "generateBase64SecretsFile",
 	})
 
 	f, err := ioutil.ReadFile(fp)
@@ -116,31 +117,50 @@ func createSecretsFile(fp string, wpf string) error {
 	return nil
 }
 
+func globYamlFiles() []string {
+	logger := log.WithFields(log.Fields{
+		"method": "globYamlFiles",
+	})
+
+	glob, err := filepath.Glob(globLocal)
+	if err != nil {
+		logger.WithFields(log.Fields{
+			"error": err,
+		}).Fatal("Local File globbing failed")
+	}
+
+	recurseGlob, err := filepath.Glob(globRecursive)
+	if err != nil {
+		logger.WithFields(log.Fields{
+			"error": err,
+		}).Fatal("Recursive File globbing failed")
+	}
+
+	// Append local glob to recursive glob as there generally should be less to append
+	glob = append(recurseGlob, glob...)
+
+	return glob
+}
+
 func main() {
 	logger := log.WithFields(log.Fields{
 		"method": "main",
 	})
 
-	logger.Info("b64secrets is converting secrets..")
-	glob, err := filepath.Glob(globPattern)
-	if err != nil {
-		logger.WithFields(log.Fields{
-			"error": err,
-		}).Fatal("File globbing failed")
-	}
+	logger.Info("b64secrets has started...")
 
-	for _, readFilepath := range glob {
+	for _, readFilepath := range globYamlFiles() {
 		// Don't create secrets from already converted secrets files
 		if strings.Contains(readFilepath, ".base64.yml") {
 			continue
 		}
 
 		writeFilepath := fmt.Sprintf("%s.base64.yml", strings.TrimRight(readFilepath, ".yml"))
-		err := createSecretsFile(readFilepath, writeFilepath)
+		err := generateBase64SecretsFile(readFilepath, writeFilepath)
 		if err != nil {
 			logger.Error("error writing secrets file... Continuing...")
 		}
 	}
 
-	logger.Info("b64secrets file conversions completed!")
+	logger.Info("b64secrets has finished")
 }
