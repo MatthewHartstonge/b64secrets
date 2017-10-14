@@ -106,12 +106,13 @@ func createSecretsFile(fp string, wpf string) error {
 				"error": err,
 			}).Error("file write failure")
 		}
+
+		logger.WithFields(log.Fields{
+			"originalPath":  fp,
+			"conformedPath": wpf,
+		}).Info("Created conformed secrets file")
 	}
 
-	logger.WithFields(log.Fields{
-		"originalPath":  fp,
-		"conformedPath": wpf,
-	}).Info("Created conformed secrets file")
 	return nil
 }
 
@@ -129,6 +130,11 @@ func main() {
 	}
 
 	for _, readFilepath := range glob {
+		// Don't create secrets from already converted secrets files
+		if strings.Contains(readFilepath, ".base64.yml") {
+			continue
+		}
+
 		writeFilepath := fmt.Sprintf("%s.base64.yml", strings.TrimRight(readFilepath, ".yml"))
 		err := createSecretsFile(readFilepath, writeFilepath)
 		if err != nil {
